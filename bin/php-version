@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+echo "                                                       "
+echo " ____  _   _ ____   __     __            _             "
+echo "|  _ \| | | |  _ \  \ \   / /__ _ __ ___(_) ___  _ __  "
+echo "| |_) | |_| | |_) |  \ \ / / _ \ '__/ __| |/ _ \| '_ \ "
+echo "|  __/|  _  |  __/    \ V /  __/ |  \__ \ | (_) | | | |"
+echo "|_|   |_| |_|_|        \_/ \___|_|  |___/_|\___/|_| |_|"
+echo "                                                       "
+echo "                                                       "
+
+COMMAND=$1
+
+if [ "$COMMAND" = "releases" ]
+then
+    echo "> Listing available PHP releases..."
+
+    RELEASES=/c/php/releases/*
+    for RELEASE in $RELEASES
+    do
+        echo "+ "$(basename "$RELEASE")
+    done
+elif [ "$COMMAND" = "use" ]
+then
+    PHP_RELEASE=$2
+    echo "> Changing the PHP release to \"$PHP_RELEASE\"..."
+
+    if [ -d /c/php/current-release ]
+    then
+        rm -rf /c/php/current-release
+    fi
+
+    if [ -f /c/php/releases/$PHP_RELEASE/php.exe ]
+    then
+        mkdir /c/php/current-release/
+        cp -rf /c/php/releases/$PHP_RELEASE/* /c/php/current-release/
+        echo "> Success."
+        php -v
+    else
+        echo "> The PHP release \"$PHP_RELEASE\" was not found."
+    fi
+else
+    cat <<'EOT'
+> Available commands:
+
+php-version releases      list all releases that are available to use.
+php-version use <release> setup the <release> to be used.
+EOT
+
+fi
