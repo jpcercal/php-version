@@ -11,29 +11,67 @@ echo "                                                       "
 
 COMMAND=$1
 
+BIN_PATH=$(dirname `which php-version`)
+ROOT_PATH=$(dirname $BIN_PATH)
+RELEASES_PATH=$ROOT_PATH'/releases'
+TARGET_PATH=$ROOT_PATH'/current-release'
+
 if [ "$COMMAND" = "releases" ]
 then
     echo "> Listing available PHP releases..."
 
-    RELEASES=/c/php/releases/*
+    RELEASES=$RELEASES_PATH'/*'
     for RELEASE in $RELEASES
     do
-        echo "+ "$(basename "$RELEASE")
+        CURRENT_FILENAME=$(basename "$RELEASE")
+
+        if [ -d $RELEASES_PATH'/'$CURRENT_FILENAME ]
+        then
+            echo "+ "$CURRENT_FILENAME
+        fi
     done
+elif [ "$COMMAND" = "download" ]
+then
+    PHP_RELEASE=$2
+    PHP_ZIP_FILENAME='php-'$PHP_RELEASE'.zip'
+    COMPILERS=('VC14' 'VC11' 'VC9' 'VC6')
+    PHP_VERSION_FOUND=0
+
+    for COMPILER in "${COMPILERS[@]}"
+    do
+        PHP_REMOTE_FILENAME='http://windows.php.net/downloads/releases/archives/php-'$PHP_RELEASE'-nts-Win32-'$COMPILER'-x64.zip'
+
+        STATUSCODE=$(curl --silent --head --fail --write-out "%{http_code}" --output /dev/null $PHP_REMOTE_FILENAME)
+
+        if [ "$STATUSCODE" = "200" ]; then
+            PHP_VERSION_FOUND=1
+            break
+        fi;
+    done
+
+    if [ "$PHP_VERSION_FOUND" = "1" ]; then
+        echo "> Downloading the PHP release \"$PHP_RELEASE\"..."
+
+        curl --output $RELEASES_PATH/$PHP_ZIP_FILENAME $PHP_REMOTE_FILENAME
+        7z x -y -o$RELEASES_PATH/$PHP_RELEASE $RELEASES_PATH/$PHP_ZIP_FILENAME
+
+        echo "> The PHP release \"$PHP_RELEASE\" are available (locally) and ready to use..."
+    else
+        echo "! Warning, the PHP release \"$PHP_RELEASE\" was not found."
+    fi;
 elif [ "$COMMAND" = "use" ]
 then
     PHP_RELEASE=$2
     echo "> Changing the PHP release to \"$PHP_RELEASE\"..."
 
-    if [ -d /c/php/current-release ]
+    if [ -d $TARGET_PATH ]
     then
-        rm -rf /c/php/current-release
+        rm -rf $TARGET_PATH
     fi
 
-    if [ -f /c/php/releases/$PHP_RELEASE/php.exe ]
+    if [ -f $RELEASES_PATH/$PHP_RELEASE/php.exe ]
     then
-        mkdir /c/php/current-release/
-        cp -rf /c/php/releases/$PHP_RELEASE/* /c/php/current-release/
+        ln -s $RELEASES_PATH/$PHP_RELEASE $TARGET_PATH
         echo "> Success."
         php -v
     else
@@ -43,8 +81,9 @@ else
     cat <<'EOT'
 > Available commands:
 
-php-version releases      list all releases that are available to use.
-php-version use <release> setup the <release> to be used.
+php-version releases           list all releases that are available (locally) ready to use.
+php-version use <release>      setup the <release> to be used.
+php-version download <release> download a specific php version from php.net.
 EOT
 
 fi
